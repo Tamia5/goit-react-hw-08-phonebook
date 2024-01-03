@@ -1,47 +1,122 @@
 import { useDispatch, useSelector } from 'react-redux';
-import { addContact } from 'redux/operations';
-import { selectContacts } from 'redux/selectors';
-import { nanoid } from 'nanoid';
-import { toast } from 'react-toastify';
-import { Form, Label, Input, Btn } from './ContactForm.styled';
+import { addContact } from 'Redux/Contacts/operations';
+import { useState } from 'react';
+import {
+  FormWrap,
+  AddModalBtn,
+  UserIcon,
+  PhoneIcon,
+  InputForm,
+  AddModal,
+  OpenAddModal,
+} from './ContactForm.styled';
+import { PlusCircleOutlined } from '@ant-design/icons';
 
 export const ContactForm = () => {
+  const [open, setOpen] = useState(false);
+  const [form] = FormWrap.useForm();
+  const currentContacts = useSelector(state => state.contacts.items);
+  const loader = useSelector(state => state.contacts.isLoading);
   const dispatch = useDispatch();
-  const contacts = useSelector(selectContacts);
 
-  const handleSubmit = event => {
-    event.preventDefault();
+  const showModal = () => {
+    form.resetFields();
+    setOpen(true);
+  };
 
-    const contact = {
-      id: nanoid(),
-      name: event.currentTarget.elements.name.value,
-      number: event.currentTarget.elements.number.value,
+  const submit = value => {
+    const formatTel = () => {
+      const number = value.number;
+      const phoneLength = number.length;
+
+      if (phoneLength < 7) {
+        return `(${number.slice(0, 3)}) ${number.slice(3)}`;
+      }
+
+      return `(${number.slice(0, 3)}) ${number.slice(3, 6)}-${number.slice(
+        6,
+        10
+      )}`;
     };
 
-    const isExist = contacts.find(
-      ({ name }) => name.toLowerCase() === contact.name.toLowerCase()
-    );
+    const newContact = { name: value.name, number: formatTel() };
+    const newContactName = newContact.name.toLowerCase();
 
-    if (isExist) {
-      return toast.warn(`${contact.name} is already in contacts.`);
+    if (
+      currentContacts.find(
+        contact => contact.name.toLowerCase() === newContactName
+      )
+    ) {
+      alert(`${newContact.name} is already in contact`);
+    } else {
+      dispatch(addContact(newContact));
+
+      if (!loader) {
+        form.resetFields();
+        setOpen(false);
+      }
     }
-
-    dispatch(addContact(contact));
-    event.currentTarget.reset();
   };
 
   return (
-    <Form onSubmit={handleSubmit}>
-      <Label htmlFor={nanoid()}>
-        Name
-        <Input type="text" name="name" id={nanoid()} required />
-      </Label>
-      <Label htmlFor={nanoid()}>
-        Number
-        <Input type="tel" name="number" id={nanoid()} required />
-      </Label>
+    <>
+      <OpenAddModal
+        type="primary"
+        onClick={showModal}
+        title="add new contact"
+        size={'large'}
+      >
+        <PlusCircleOutlined />
+        Add contact
+      </OpenAddModal>
 
-      <Btn type="submit">Add contact</Btn>
-    </Form>
+      <AddModal
+        footer={null}
+        title="Add new contact"
+        open={open}
+        onCancel={() => setOpen(false)}
+      >
+        <FormWrap
+          form={form}
+          name="normal_login"
+          initialValues={{
+            remember: true,
+          }}
+          onFinish={submit}
+        >
+          <FormWrap.Item
+            name="name"
+            rules={[
+              {
+                required: true,
+                message: 'Please input Name!',
+                type: 'text',
+              },
+            ]}
+          >
+            <InputForm prefix={<UserIcon />} placeholder="Name" />
+          </FormWrap.Item>
+
+          <FormWrap.Item
+            name="number"
+            rules={[
+              {
+                required: true,
+                message: 'Please input Number!',
+                type: 'phone',
+              },
+            ]}
+          >
+            <InputForm prefix={<PhoneIcon />} type="" placeholder="Number" />
+          </FormWrap.Item>
+
+          <FormWrap.Item>
+            <AddModalBtn type="primary" htmlType="submit">
+              Create contact
+            </AddModalBtn>
+          </FormWrap.Item>
+        </FormWrap>
+      </AddModal>
+    </>
   );
 };
